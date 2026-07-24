@@ -9,7 +9,7 @@ Ouvrez simplement `https://vactar94.github.io/adrien.le-berre/` dans votre navig
 ## Contenu présent
 
 - 5 projets : Task-List, Word Puzzle Solver, Tribz, Automatik Drone et e-Tri ;
-- 4 expériences : Assemblée nationale, La Brasserie à Bozeman, Maison de la Gendarmerie et Scouts et Guides de France ;
+- 6 expériences : Présidence de l'Assemblée nationale, La Chaumière Nouvelle Calédonie, La Brasserie à Bozeman USA, Maison de la Gendarmerie - colonies de vacances et hôtel - et Scouts et Guides de France ;
 - 2 centres d’intérêt : muay-thaï et voile ;
 - les photographies extraites du portfolio final ;
 - le portfolio détaillé au format PDF ;
