@@ -13,7 +13,7 @@ Ouvrez simplement `https://vactar94.github.io/adrien.le-berre/` dans votre navig
 - 2 centres d’intérêt : muay-thaï et voile ;
 - les photographies extraites du portfolio final ;
 - [le portfolio détaillé au format PDF](./assets/documents/portfolio-detaille-adrien-le-berre.pdf) ;
-- [le cv au format pdf](./assets/documents/CV ADRIEN LE BERRE.pdf);
+- [le cv au format pdf](./assets/documents/CV-ADRIEN-LE-BERRE.pdf);
 - les traductions françaises, anglaises, italiennes et espagnoles.
 
 
