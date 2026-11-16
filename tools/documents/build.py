@@ -144,17 +144,26 @@ p.txt { font-size: 11pt; line-height: 1.6; color: #2b3652; text-align: justify; 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
 .ph { width: 100%; object-fit: cover; border-radius: 4mm; display: block; background: #fff; }
 .proj-body { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin-top: 6mm; flex: 1; min-height: 0; }
-.details { display: flex; flex-direction: column; gap: 4mm; }
+.details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; margin: 6mm 0 2mm; }
 .details h4 { font-size: 8.4pt; text-transform: uppercase; letter-spacing: .12em; color: #4f86e3; margin-bottom: 1mm; }
 .details p { font-size: 10pt; line-height: 1.5; color: #2b3652; }
 .btn { display: inline-block; background: #1f2a44; color: #fff !important; text-decoration: none; border-radius: 3mm; padding: 2.4mm 4.5mm; font-weight: 700; font-size: 10pt; }
 .gallery { display: grid; gap: 4mm; }
+.side-layout { display: grid; grid-template-columns: 58mm 1fr; gap: 7mm; flex: 1; min-height: 0; margin-top: 6mm; }
+.side-layout .gallery.auto { margin-top: 0; height: 100%; }
+.details.details--col { grid-template-columns: 1fr; margin: 0; align-content: start; }
+.gallery.auto { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3.5mm; flex: 1 1 0; min-height: 0; margin-top: 4mm; }
+.gallery.auto .row { display: flex; gap: 3.5mm; justify-content: center; }
+.gallery.auto img { display: block; border-radius: 3mm; background: #fff; }
 .exp { margin-bottom: 5mm; }
 .contact-list { list-style: none; display: flex; flex-direction: column; gap: 4mm; font-size: 12pt; }
 .contact-list a { text-decoration: none; display: flex; align-items: center; gap: 3mm; }
 .contact-list svg { width: 7mm; height: 7mm; color: #4f86e3; }
 .logo { height: 16mm; width: auto; object-fit: contain; }
 """
+
+SIDE = {"drone"}
+SCRIPT = "<script>\nfunction layoutGalleries(){\n  const MM = 96/25.4, GAP = 3.5*MM;\n  document.querySelectorAll('.gallery.auto').forEach(g => {\n    const imgs = [...g.querySelectorAll('img')];\n    const ar = imgs.map(i => i.naturalWidth / i.naturalHeight);\n    const W = g.clientWidth, H = g.clientHeight, n = imgs.length;\n    let best = null;\n    for (let mask = 0; mask < (1 << (n - 1)); mask++) {\n      const rows = []; let cur = [0];\n      for (let i = 1; i < n; i++) { if (mask & (1 << (i - 1))) { rows.push(cur); cur = [i]; } else cur.push(i); }\n      rows.push(cur);\n      let hs = rows.map(r => (W - GAP * (r.length - 1)) / r.reduce((a, i) => a + ar[i], 0));\n      const free = H - GAP * (rows.length - 1), tot = hs.reduce((a, b) => a + b, 0);\n      if (tot > free) hs = hs.map(h => h * free / tot);\n      const area = rows.reduce((a, r, k) => a + r.reduce((b, i) => b + ar[i] * hs[k] * hs[k], 0), 0);\n      const minH = Math.min(...hs);\n      const score = area * (minH < 25*MM ? 0.5 : 1);   // avoid tiny thumbnails\n      if (!best || score > best.score) best = { rows, hs, score };\n    }\n    g.innerHTML = '';\n    best.rows.forEach((r, k) => {\n      const row = document.createElement('div'); row.className = 'row';\n      r.forEach(i => { const im = imgs[i]; im.style.height = best.hs[k] + 'px'; im.style.width = (best.hs[k] * ar[i]) + 'px'; row.appendChild(im); });\n      g.appendChild(row);\n    });\n  });\n  document.body.dataset.ready = '1';\n}\nwindow.addEventListener('load', layoutGalleries);\n</script>"
 
 def pf_html(lang):
     t = PF[lang]; P = t["projects"]
@@ -177,7 +186,7 @@ def pf_html(lang):
     pages.append(toc)
     facts = "".join(f"<div><span>{e(a)}</span><strong>{e(b)}</strong></div>" for a, b in t["facts"])
     pages.append(f'''<section class="page" id="about"><p class="kicker">I.</p><h1 class="sec">{e(t["sec_about"])}</h1>
-<div style="display:grid;grid-template-columns:1.25fr 1fr;gap:8mm;align-items:start"><p class="txt">{e(t["about"])}</p><img class="ph" src="img/portrait.jpg" style="height:110mm" alt=""></div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr;gap:8mm;align-items:start"><p class="txt">{e(t["about"])}</p><img class="ph" src="img/portrait.jpg" style="width:100%;height:auto" alt=""></div>
 <div class="facts">{facts}</div>{num("about")}</section>''')
     chips = lambda xs: '<div class="chips">' + "".join(f"<span>{e(x)}</span>" for x in xs) + "</div>"
     pages.append(f'''<section class="page" id="skills"><p class="kicker">II.</p><h1 class="sec">{e(t["sec_skills"])}</h1>
@@ -193,39 +202,41 @@ def pf_html(lang):
     fits = {"etri-app.jpg": "contain", "drone-logo.jpg": "contain", "poolnight-ranking.jpg": "contain", "etri-poster.jpg": "contain", "drone-poster.jpg": "contain"}
     for k in ["etri", "drone", "tribz", "word", "task", "pool"]:
         name, meta, what, ctx, role = P[k]
-        im = imgs[k]
-        h = 100 if len(im) == 2 else 210
-        gal = "".join(f'<img class="ph" src="img/{x}" style="height:{h}mm;object-fit:{fits.get(x,"cover")}" alt="">' for x in im)
-        btn = f'<p><a class="btn" href="{links[k]}">{e(t["link"])} ↗</a></p>' if k in links else ""
+        gal = "".join(f'<img src="img/{x}" alt="">' for x in imgs[k])
+        btn = f'<a class="btn" href="{links[k]}">{e(t["link"])} ↗</a>' if k in links else ""
+        det = f'<div><h4>{e(t["context"])}</h4><p>{e(ctx)}</p></div><div><h4>{e(t["role"])}</h4><p>{e(role)}</p></div><div><h4>{e(t["stack"])}</h4>{chips(stacks[k].split(" · "))}<p style="margin-top:3mm">{btn}</p></div>'
+        if k in SIDE:   # mostly portrait images: text column on the left, images on the right
+            body = f'<div class="side-layout"><div class="details details--col">{det}</div><div class="gallery auto">{gal}</div></div>'
+        else:
+            body = f'<div class="details">{det}</div><div class="gallery auto">{gal}</div>'
         pages.append(f'''<section class="page" id="{k}"><p class="kicker">III. {e(t["sec_projects"])}</p><h1 class="sec" style="margin-bottom:1mm">{e(name)}</h1><p class="meta">{e(meta)}</p>
 <div class="blue"><p class="txt" style="color:#fff">{e(what)}</p></div>
-<div class="proj-body"><div class="details"><div><h4>{e(t["context"])}</h4><p>{e(ctx)}</p></div><div><h4>{e(t["role"])}</h4><p>{e(role)}</p></div><div><h4>{e(t["stack"])}</h4>{chips(stacks[k].split(" · "))}</div>{btn}</div>
-<div class="gallery">{gal}</div></div>{num(k)}</section>''')
+{body}{num(k)}</section>''')
     c = t["cook"]
     pages.append(f'''<section class="page" id="cook"><p class="kicker">IV. {e(t["sec_exp"])}</p><h1 class="sec">{e(t["sec_cook"])}</h1>
 <p class="txt" style="margin-bottom:6mm">{e(t["cook_intro"])}</p>
 <div class="card exp"><h2 class="sub">{e(c[0][0])}</h2><p class="meta" style="margin-bottom:2mm">{e(c[0][1])}</p><p class="txt">{e(c[0][2])}</p></div>
-<div class="gallery" style="grid-template-columns:1fr 1fr 1fr"><img class="ph" src="img/chaumiere-front.jpg" style="height:88mm" alt=""><img class="ph" src="img/chaumiere-catering.jpg" style="height:88mm" alt=""><img class="ph" src="img/chaumiere-trays.jpg" style="height:88mm" alt=""></div>
+<div class="gallery auto"><img src="img/chaumiere-front.jpg" alt=""><img src="img/chaumiere-catering.jpg" alt=""><img src="img/chaumiere-trays.jpg" alt=""></div>
 {num("cook")}</section>''')
     pages.append(f'''<section class="page" id="cook2"><p class="kicker">IV. {e(t["sec_exp"])}</p><h1 class="sec">{e(t["sec_cook"])}</h1>
 <div class="card exp" style="display:grid;grid-template-columns:1fr 22mm;gap:4mm;align-items:center"><div><h2 class="sub">{e(c[1][0])}</h2><p class="meta" style="margin-bottom:2mm">{e(c[1][1])}</p><p class="txt">{e(c[1][2])}</p></div><img class="logo" src="img/assemblee-logo.png" alt=""></div>
-<div class="gallery" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:6mm"><img class="ph" src="img/assemblee-1.jpg" style="height:58mm" alt=""><img class="ph" src="img/assemblee-2.jpg" style="height:58mm" alt=""><img class="ph" src="img/assemblee-3.jpg" style="height:58mm" alt=""></div>
+<div class="gallery auto" style="margin-bottom:5mm"><img src="img/assemblee-1.jpg" alt=""><img src="img/assemblee-2.jpg" alt=""><img src="img/assemblee-3.jpg" alt=""></div>
 <div class="card exp" style="display:grid;grid-template-columns:1fr 30mm;gap:4mm;align-items:center"><div><h2 class="sub">{e(c[2][0])}</h2><p class="meta" style="margin-bottom:2mm">{e(c[2][1])}</p><p class="txt">{e(c[2][2])}</p></div><img class="logo" style="height:22mm" src="img/brasserie-logo.png" alt=""></div>
-<div class="gallery" style="grid-template-columns:1fr 1fr"><img class="ph" src="img/brasserie-adrien.jpg" style="height:66mm" alt=""><img class="ph" src="img/brasserie-dish.jpg" style="height:66mm" alt=""></div>
+<div class="gallery auto"><img src="img/brasserie-adrien.jpg" alt=""><img src="img/brasserie-dish.jpg" alt=""></div>
 {num("cook2")}</section>''')
     a = t["anim"]
     pages.append(f'''<section class="page" id="anim"><p class="kicker">IV. {e(t["sec_exp"])}</p><h1 class="sec">{e(t["sec_anim"])}</h1>
 <p class="txt" style="margin-bottom:6mm">{e(t["anim_intro"])}</p>
 <div class="grid2" style="margin-bottom:6mm"><div class="card"><img class="logo" src="img/gendarmerie-logo.png" alt=""><h2 class="sub" style="margin-top:2mm">{e(a[0][0])}</h2><p class="txt" style="font-size:9.6pt">{e(a[0][1])}</p></div>
 <div class="card"><img class="logo" src="img/scouts-logo.png" alt=""><h2 class="sub" style="margin-top:2mm">{e(a[1][0])}</h2><p class="txt" style="font-size:9.6pt">{e(a[1][1])}</p></div></div>
-<div class="gallery" style="grid-template-columns:1fr 1fr"><img class="ph" src="img/anim-group.jpg" style="height:70mm" alt=""><img class="ph" src="img/anim-scouts.jpg" style="height:70mm" alt=""><img class="ph" src="img/anim-1.jpg" style="height:60mm" alt=""><img class="ph" src="img/anim-field.jpg" style="height:60mm" alt=""></div>
+<div class="gallery auto"><img src="img/anim-group.jpg" alt=""><img src="img/anim-scouts.jpg" alt=""><img src="img/anim-1.jpg" alt=""><img src="img/anim-field.jpg" alt=""></div>
 {num("anim")}</section>''')
     m, s = t["muay"], t["sail"]
     pages.append(f'''<section class="page" id="interests"><p class="kicker">V.</p><h1 class="sec">{e(t["sec_int"])}</h1>
 <div class="card" style="margin-bottom:5mm"><h2 class="sub">{e(m[0])}</h2><p class="meta" style="margin-bottom:2mm">{e(m[1])}</p><p class="txt" style="font-size:10pt">{e(m[2])}</p></div>
-<div class="gallery" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:6mm"><img class="ph" src="img/muay-1.jpg" style="height:60mm" alt=""><img class="ph" src="img/muay-2.jpg" style="height:60mm" alt=""><img class="ph" src="img/muay-3.jpg" style="height:60mm" alt=""></div>
+<div class="gallery auto" style="margin-bottom:5mm"><img src="img/muay-1.jpg" alt=""><img src="img/muay-2.jpg" alt=""><img src="img/muay-3.jpg" alt=""></div>
 <div class="card" style="margin-bottom:5mm"><h2 class="sub">{e(s[0])}</h2><p class="meta" style="margin-bottom:2mm">{e(s[1])}</p><p class="txt" style="font-size:10pt">{e(s[2])}</p></div>
-<div class="gallery" style="grid-template-columns:1fr 1fr 1fr"><img class="ph" src="img/sail-1.jpg" style="height:56mm" alt=""><img class="ph" src="img/sail-2.jpg" style="height:56mm" alt=""><img class="ph" src="img/sail-3.jpg" style="height:56mm" alt=""></div>
+<div class="gallery auto"><img src="img/sail-1.jpg" alt=""><img src="img/sail-2.jpg" alt=""><img src="img/sail-3.jpg" alt=""></div>
 {num("interests")}</section>''')
     pages.append(f'''<section class="page" id="contact"><p class="kicker">VI.</p><h1 class="sec">{e(t["sec_contact"])}</h1>
 <p class="txt" style="margin-bottom:10mm">{e(t["contact_text"])}</p>
@@ -233,7 +244,7 @@ def pf_html(lang):
 <li><a href="mailto:{EMAIL}">{ICON["mail"]}{EMAIL}</a></li><li><a href="tel:{PHONE.replace(" ","")}">{ICON["phone"]}{PHONE}</a></li>
 <li><a href="{LINKEDIN}">{ICON["in"]}LinkedIn — Adrien Le Berre</a></li><li><a href="{SITE}">{ICON["web"]}{e(t["site_label"])}</a></li></ul>
 <img class="ph" src="img/portrait.jpg" style="height:45mm;border-radius:50%" alt=""></div>{num("contact")}</section>''')
-    return f'<!DOCTYPE html><html lang="{lang}"><head><meta charset="utf-8"><title>{e(t["title"])}</title><style>{PF_CSS}</style></head><body>{"".join(pages)}</body></html>'
+    return f'<!DOCTYPE html><html lang="{lang}"><head><meta charset="utf-8"><title>{e(t["title"])}</title><style>{PF_CSS}</style>{SCRIPT}</head><body>{"".join(pages)}</body></html>'
 
 
 def render():
@@ -245,6 +256,7 @@ def render():
                 src = ROOT / f"_{kind}-{lang}.html"
                 src.write_text(fn(lang), encoding="utf-8")
                 page.goto(src.as_uri()); page.wait_for_load_state("networkidle")
+                if kind == "pf": page.wait_for_selector("body[data-ready]", state="attached")
                 d = OUT / sub; d.mkdir(exist_ok=True)
                 page.pdf(path=str(d / f"{name}-{lang.upper()}.pdf"), format="A4", print_background=True, prefer_css_page_size=True, tagged=True)
         b.close()
